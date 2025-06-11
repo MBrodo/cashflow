@@ -4,5 +4,11 @@
   },
   "dependencies": {
     "@prisma/client": "^6.9.0"
+  },
+  "scripts": {
+    "dev": "ts-node-dev src/index.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name add_categories_to_expenses --preview-feature",
+    "prisma:seed": "ts-node prisma/seed.ts"
   }
 }

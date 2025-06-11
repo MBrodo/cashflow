@@ -15,11 +15,20 @@ model User {
   expenses Expense[]
 }
 
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  icon     String
+  expenses Expense[]
+}
+
 model Expense {
-  id        Int      @id @default(autoincrement())
-  amount    Float
-  note      String?
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  id          Int       @id @default(autoincrement())
+  amount      Float
+  note        String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  category    Category  @relation(fields: [categoryId], references: [id])
+  categoryId  Int
 }
