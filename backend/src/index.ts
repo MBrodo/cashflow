@@ -4,29 +4,36 @@ import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 import authRoutes from "./routes/auth";
 import { authenticateToken, AuthRequest } from "./middleware/authMiddleware";
+import analyticsRouter from "./routes/analytics"; // Убедитесь, что файл src/routes/analytics.ts существует
 
 const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
-// Разрешаем *все* origin (удобно в dev)
+// CORS
 app.use(cors());
-// Разрешаем preflight для любых эндпоинтов
 app.options("*", cors());
 
+// JSON body parser
 app.use(express.json());
 
+// Health check
 app.get("/", (_req, res) => {
   res.send("Cashflow backend is running");
 });
 
-// GET /categories — список всех категорий
+// Categories
 app.get("/categories", async (_req, res) => {
-  const list = await prisma.category.findMany({ orderBy: { name: "asc" } });
-  res.json(list);
+  try {
+    const list = await prisma.category.findMany({ orderBy: { name: "asc" } });
+    res.json(list);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Не удалось получить категории" });
+  }
 });
 
-// Auth
+// Auth routes
 app.use("/auth", authRoutes);
 
 // Expenses
@@ -46,11 +53,8 @@ app.get("/expenses", authenticateToken, async (req: AuthRequest, res) => {
 
 app.post("/expenses", authenticateToken, async (req: AuthRequest, res) => {
   const { amount, note, categoryId } = req.body;
-
-  // Приводим categoryId к числу
   const catId = parseInt(String(categoryId), 10);
 
-  // Проверяем валидность
   if (typeof amount !== "number" || amount <= 0 || isNaN(catId)) {
     return res.status(400).json({ error: "Неверные данные для расхода" });
   }
@@ -65,14 +69,17 @@ app.post("/expenses", authenticateToken, async (req: AuthRequest, res) => {
       },
       include: { category: true },
     });
-    return res.status(201).json(expense);
+    res.status(201).json(expense);
   } catch (err) {
     console.error("Error creating expense:", err);
-    return res.status(500).json({ error: "Не удалось сохранить расход" });
+    res.status(500).json({ error: "Не удалось сохранить расход" });
   }
 });
 
-// Глобальная обработка ошибок (опционально)
+// Analytics routes — обязательно после authenticateToken
+app.use("/analytics/expenses", authenticateToken, analyticsRouter);
+
+// Global error handler
 app.use(
   (
     err: any,
